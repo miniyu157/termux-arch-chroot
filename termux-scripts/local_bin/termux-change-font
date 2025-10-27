@@ -18,7 +18,7 @@ if [ ! -f "$SourceFont" ]; then
     exit 1
 fi
 
-TargetDir="/data/user/0/com.termux/files/home/.termux"
+TargetDir="/data/data/com.termux/files/home/.termux"
 TargetFont="$TargetDir/font.ttf"
 TermuxDataDir="/data/data/com.termux/files/usr"
 
