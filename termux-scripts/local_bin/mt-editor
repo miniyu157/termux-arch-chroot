@@ -1,0 +1,15 @@
+#!/data/data/com.termux/files/usr/bin/sh
+
+if [ -z "$1" ]; then
+    echo "用法: $0 文件路径"
+    exit 1
+fi
+
+FILE_PATH=$(realpath "$1")
+
+am start \
+    --grant-read-uri-permission \
+    --grant-write-uri-permission \
+    -a android.intent.action.VIEW \
+    -n bin.mt.plus/bin.mt.plus.OpenTextActivity \
+    -d "file://${FILE_PATH}"

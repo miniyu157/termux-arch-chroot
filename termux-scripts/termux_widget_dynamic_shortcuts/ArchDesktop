@@ -1,0 +1,56 @@
+#!/data/data/com.termux/files/usr/bin/sh
+
+# 清除残留进程，打开显示
+killall -9 termux-x11 2> /dev/null
+termux-x11 :0 -dpi 96 &
+am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity
+
+# 如果不是 root, 使用 su -c 重新执行脚本自身
+if [ "$(id -u)" -ne 0 ]; then
+    # shellcheck disable=SC2016
+    exec su -c 'exec "$0" "$@"' "$0" "$@"
+fi
+
+# Chroot 路径
+ChrootPath="/data/local/tmp/arch"
+
+# 解决用户切换的 suid 问题
+mount -o remount,dev,suid /data
+# 挂载 /dev
+mount --bind /dev $ChrootPath/dev
+
+# 创建挂载文件系统所需文件夹
+mkdir -p $ChrootPath/dev/pts
+mkdir -p $ChrootPath/dev/shm
+mkdir -p $ChrootPath/proc
+mkdir -p $ChrootPath/sys
+mkdir -p $ChrootPath/sdcard
+mkdir -p /data/user/0/com.termux/files/usr/tmp && chmod 1777 /data/user/0/com.termux/files/usr/tmp
+
+# 挂载文件系统
+mount -t devpts devpts $ChrootPath/dev/pts
+mount -t tmpfs -o size=512M tmpfs $ChrootPath/dev/shm
+mount --bind /proc $ChrootPath/proc
+mount --bind /sys $ChrootPath/sys
+mount --bind /sdcard $ChrootPath/sdcard
+# 挂载 Termux 的 tmp，使其 x11 能够通信
+mount --bind /data/data/com.termux/files/usr/tmp $ChrootPath/tmp
+
+# 等 X11 socket 就绪
+while [ ! -S "/data/data/com.termux/files/usr/tmp/.X11-unix/X0" ]; do sleep 0.2; done
+
+# 伪造 systemctl 和电源管理器
+echo "#!/bin/sh
+case \$1 in import-environment|list-jobs|start|stop|is-active|is-enabled) exit 0;; *) exec systemctl.orig \\\"\$@\\\" 2>/dev/null || exit 0;; esac" \
+    > $ChrootPath/usr/bin/systemctl && chmod 755 $ChrootPath/usr/bin/systemctl
+ln -sf /bin/true $ChrootPath/usr/bin/pm-is-supported
+
+# Chroot 进入并启动桌面
+exec chroot "$ChrootPath" /bin/su - yumeka -c "
+mkdir -p /tmp/xdg-yumeka
+chmod 0700 /tmp/xdg-yumeka
+export DISPLAY=:0
+
+# dbus-run-session startxfce4
+dbus-launch --exit-with-session && TU_DEBUG=noconform ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact startxfce4
+"

@@ -1,0 +1,40 @@
+#!/data/data/com.termux/files/usr/bin/sh
+
+# 如果不是 root, 使用 su -c 重新执行脚本自身
+if [ "$(id -u)" -ne 0 ]; then
+    # shellcheck disable=SC2016
+    exec su -c 'exec "$0" "$@"' "$0" "$@"
+fi
+
+if [ -z "$1" ]; then
+    echo "用法: $0 <字体文件路径>"
+    echo "例如: $0 '/sdcard/Download/myfont.ttf'"
+    exit 1
+fi
+
+SourceFont="$1"
+if [ ! -f "$SourceFont" ]; then
+    echo "错误: 文件 '$SourceFont' 不存在。"
+    exit 1
+fi
+
+TargetDir="/data/user/0/com.termux/files/home/.termux"
+TargetFont="$TargetDir/font.ttf"
+TermuxDataDir="/data/data/com.termux/files/usr"
+
+TermuxUID=$(stat -c "%u" "$TermuxDataDir")
+TermuxGID=$(stat -c "%g" "$TermuxDataDir")
+
+if [ -z "$TermuxUID" ] || [ -z "$TermuxGID" ]; then
+    echo "错误: 无法获取 Termux 的 UID/GID。"
+    exit 1
+fi
+
+mkdir -p "$TargetDir"
+chown "$TermuxUID:$TermuxGID" "$TargetDir"
+cp -f "$SourceFont" "$TargetFont"
+chown "$TermuxUID:$TermuxGID" "$TargetFont"
+chmod 600 "$TargetFont"
+
+echo "字体已成功设置为: $SourceFont"
+echo "请重启 Termux 以应用更改。"
