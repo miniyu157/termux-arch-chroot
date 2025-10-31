@@ -11,7 +11,7 @@ Android chroot ArchLinux 的脚本和教程
 自动化安装脚本。配置 Arch chroot，使其调用 Android 宿主浏览器 (通过 am start) 作为默认浏览器打开链接。可以粘贴以下命令快速应用
 
 ```bash
-curl -LO "https://raw.githubusercontent.com/miniyu157/termux-arch-chroot/refs/heads/main/setup_android_browser.sh" && chmod +x setup_android_browser.sh && sudo ./setup_android_browser.sh && rm setup_android_browser.sh
+curl -LO "https://raw.githubusercontent.com/miniyu157/termux-arch-chroot/refs/heads/main/arch/setup_android_browser.sh" && chmod +x setup_android_browser.sh && sudo ./setup_android_browser.sh && rm setup_android_browser.sh
 ```
 
 #### 📁 termux-scripts
