@@ -42,13 +42,9 @@ DESKTOP_FILE="${DESKTOP_DIR}/android-browser.desktop"
 
 # --- 3. 依赖安装 ---
 
-echo "正在检查并安装依赖 (sudo, zenity)..."
-if [ -f /var/lib/pacman/db.lck ]; then
-    echo "错误：Pacman 数据库被锁定。请先解决其他 pacman 进程。" >&2
-    exit 1
-fi
+echo "正在检查并安装依赖 (zenity)..."
 
-pacman -Sy --noconfirm --needed sudo zenity
+pacman -S --noconfirm --needed zenity
 if [ $? -ne 0 ]; then
     echo "错误：依赖安装失败。" >&2
     exit 1
@@ -61,24 +57,12 @@ mkdir -p "$(dirname "${WRAPPER_SCRIPT}")"
 
 cat > "${WRAPPER_SCRIPT}" << 'EOF'
 #!/bin/sh
-# 包装脚本：在 Android 中打开 URL
 
 URL="$1"
 
-# 检查 URL 是否为空
-if [ -z "$URL" ]; then
-    # 即使没有 URL，也安静退出，避免 xdg-open 报错
-    exit 0
-fi
-
-# 使用 Zenity 弹出确认框
-if zenity --question --title="安全确认" --text="即将尝试在 Android 中打开以下链接：\n\n<b>$URL</b>\n\n是否继续？" --width=400 --height=150; then
-    # chroot 到 Android 根目录并执行 am start
-    # /proc/1/root 是宿主系统的根
-    # 2>&1 将错误输出也重定向，避免 am 的常规日志污染
-    chroot /proc/1/root /system/bin/sh -c "export PATH=/system/bin; /system/bin/am start --user 0 -a android.intent.action.VIEW -d \"$URL\" > /dev/null 2>&1"
+if zenity --question --title="安全确认" --text="即将尝试在 Android 中打开以下链接：\n\n<b>$URL</b>\n\n是否继续？"; then
+    chroot /proc/1/root /system/bin/sh -c "export PATH=/system/bin; /system/bin/am start --user 0 -a android.intent.action.VIEW -d \"$URL\" > /dev/null"
 else
-    # 用户取消
     exit 1
 fi
 EOF
