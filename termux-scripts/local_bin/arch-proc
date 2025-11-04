@@ -1,0 +1,91 @@
+#!/bin/sh
+
+# 如果不是 root，使用 su -c 重新执行脚本自身
+if [ "$(id -u)" -ne 0 ]; then
+    # shellcheck disable=SC2016
+    exec su -c 'exec "$0" "$@"' "$0" "$@"
+fi
+
+CHROOT_ROOT="/data/local/tmp/arch"
+WAIT_SECS=5
+
+usage() {
+    cat << EOF
+Usage: $0 [pids|ka]
+  pids    - 输出匹配 chroot 的 PID（每行一个 PID）
+  ka      - 终止所有匹配的 PID（TERM -> wait -> KILL）
+  (无参数) - 列表显示 PID UID CMD 三列
+EOF
+    exit 1
+}
+
+collect_pids() {
+    for p in /proc/[0-9]*; do
+        [ -e "$p" ] || continue
+        root_path=$(readlink "$p/root" 2> /dev/null) || continue
+        case "$root_path" in
+            "$CHROOT_ROOT" | "$CHROOT_ROOT"/*)
+                basename "$p"
+                ;;
+        esac
+    done
+}
+
+list_table() {
+    printf "%-6s %-6s %s\n" "PID" "UID" "CMD"
+    for pid in $(collect_pids); do
+        status="/proc/$pid/status"
+        cmdline="/proc/$pid/cmdline"
+        comm="/proc/$pid/comm"
+        uid=$(awk '/^Uid:/{print $2; exit}' "$status" 2> /dev/null)
+        cmd=$(tr '\0' ' ' < "$cmdline" 2> /dev/null)
+        [ -z "$cmd" ] && cmd=$(cat "$comm" 2> /dev/null)
+        printf "%-6s %-6s %s\n" "$pid" "${uid:-?}" "${cmd:-[unknown]}"
+    done
+}
+
+kill_all() {
+    pids="$(collect_pids)"
+    [ -n "$pids" ] || {
+        echo "no matching pids"
+        return 0
+    }
+
+    # TERM 信号
+    for pid in $pids; do
+        if kill -0 "$pid" 2> /dev/null; then
+            kill "$pid" 2> /dev/null || echo "failed to send TERM to $pid"
+        fi
+    done
+
+    # 等待退出
+    end=$(($(date +%s) + WAIT_SECS))
+    while [ "$(date +%s)" -le "$end" ]; do
+        alive=0
+        while IFS= read -r pid; do
+            [ -z "$pid" ] && continue
+            if kill -0 "$pid" 2> /dev/null; then
+                alive=1
+                break
+            fi
+        done << EOF
+$pids
+EOF
+        [ "$alive" -eq 0 ] && break
+        sleep 1
+    done
+
+    # 强制 kill
+    for pid in $pids; do
+        if kill -0 "$pid" 2> /dev/null; then
+            kill -9 "$pid" 2> /dev/null && echo "SIGKILL $pid" || echo "failed to KILL $pid"
+        fi
+    done
+}
+
+case "$1" in
+    "") list_table ;;
+    pids) collect_pids ;;
+    ka) kill_all ;;
+    *) usage ;;
+esac
