@@ -1,0 +1,45 @@
+#!/data/data/com.termux/files/usr/bin/sh
+
+# 如果不是 root, 使用 su -c 重新执行脚本自身
+if [ "$(id -u)" -ne 0 ]; then
+    # shellcheck disable=SC2016
+    exec su -c 'exec "$0" "$@"' "$0" "$@"
+fi
+
+# Chroot 路径
+ChrootPath="/data/local/tmp/arch"
+
+# 颜色定义
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+# 详细模式标志
+Verbose=0
+if [ "$1" = "-v" ]; then
+    Verbose=1
+fi
+
+# 输出函数 (仅在 Verbose=1 时输出)
+print_info() { [ $Verbose -eq 1 ] && printf "${CYAN}[i]${RESET} %s\n" "$1"; }
+print_success() { [ $Verbose -eq 1 ] && printf "${GREEN}[+]${RESET} %s\n" "$1"; }
+print_warning() { [ $Verbose -eq 1 ] && printf "${YELLOW}[!]${RESET} %s\n" "$1"; }
+print_error() { [ $Verbose -eq 1 ] && printf "${RED}[-]${RESET} %s\n" "$1"; }
+
+# 挂载点列表
+Mounts="sdcard proc sys dev/shm dev/pts dev"
+
+for target in $Mounts; do
+    fullpath="$ChrootPath/$target"
+    if mountpoint -q "$fullpath"; then
+        if umount -l "$fullpath" 2> /dev/null; then
+            print_success "卸载: $fullpath"
+        else
+            print_error "失败: $fullpath"
+        fi
+    else
+        print_warning "跳过: $fullpath"
+    fi
+done

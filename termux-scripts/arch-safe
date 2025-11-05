@@ -10,7 +10,7 @@ fi
 ChrootPath="/data/local/tmp/arch"
 
 # 取消挂载文件系统
-sh '/data/user/0/com.termux/files/home/.local/bin/arch-umount'
+/data/user/0/com.termux/files/home/.local/bin/arch-umount
 
 # 解决用户切换的 suid 问题
 mount -o remount,dev,suid /data

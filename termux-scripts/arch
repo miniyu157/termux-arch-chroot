@@ -1,0 +1,19 @@
+#!/data/data/com.termux/files/usr/bin/sh
+
+# 如果不是 root, 使用 su -c 重新执行脚本自身
+if [ "$(id -u)" -ne 0 ]; then
+    # shellcheck disable=SC2016
+    exec su -c 'exec "$0" "$@"' "$0" "$@"
+fi
+
+# Chroot 路径
+ChrootPath="/data/local/tmp/arch"
+
+# 调用挂载脚本
+/data/user/0/com.termux/files/home/.local/bin/arch-mount
+
+# 登录用户和默认值
+LoginUser="${1:-yumeka}"
+
+# Chroot 进入
+exec chroot $ChrootPath /bin/su - "$LoginUser"
