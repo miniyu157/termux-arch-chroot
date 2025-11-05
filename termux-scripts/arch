@@ -15,5 +15,15 @@ ChrootPath="/data/local/tmp/arch"
 # 登录用户和默认值
 LoginUser="${1:-yumeka}"
 
+# Chroot 进入，这将保证所有启动的进程存活
+exec chroot $ChrootPath /bin/sh -c "
+    chroot /proc/1/root /system/bin/sh -c \"
+        echo $$ > /dev/cpuctl/cgroup.procs
+        echo $$ > /dev/cpuset/cgroup.procs
+        echo $$ > /dev/memcg/cgroup.procs 
+    \"
+    su - $LoginUser
+"
+
 # Chroot 进入
-exec chroot $ChrootPath /bin/su - "$LoginUser"
+# exec chroot $ChrootPath /bin/su - "$LoginUser"
