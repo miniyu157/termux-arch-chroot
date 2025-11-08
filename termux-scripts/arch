@@ -22,7 +22,7 @@ exec chroot $ChrootPath /bin/sh -c "
         echo $$ > /dev/cpuset/cgroup.procs
         echo $$ > /dev/memcg/cgroup.procs 
     \"
-    su - $LoginUser
+    exec su - $LoginUser
 "
 
 # Chroot 进入
