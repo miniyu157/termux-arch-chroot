@@ -9,6 +9,8 @@ fi
 CHROOT_ROOT="/data/local/tmp/arch"
 WAIT_SECS=5
 
+alias ps=/data/data/com.termux/files/usr/bin/ps
+
 usage() {
     cat << EOF
 Usage: $0 [pids|ka]
@@ -25,30 +27,16 @@ collect_pids() {
 }
 
 list_table() {
-    printf "%-6s %-6s %s\n" "PID" "UID" "CMD"
-    collect_pids | while read -r pid; do
-        [ -e "/proc/$pid" ] || continue
+    GRAY="$(printf '\033[90m')"
+    RESET="$(printf '\033[0m')"
 
-        status="/proc/$pid/status"
-        cmdline="/proc/$pid/cmdline"
-        comm="/proc/$pid/comm"
-
-        uid="?"
-        while read -r line; do
-            case "$line" in
-                Uid:*)
-                    # shellcheck disable=SC2086
-                    set -- $line
-                    uid=$2
-                    break
-                    ;;
-            esac
-        done < "$status" 2> /dev/null
-
-        cmd=$(tr '\0' ' ' < "$cmdline" 2> /dev/null)
-        [ -z "$cmd" ] && cmd=$(cat "$comm" 2> /dev/null)
-
-        printf "%-6s %-6s %s\n" "$pid" "${uid}" "${cmd:-[unknown]}"
+    ps -p "$(collect_pids | paste -sd, -)" -o uid,pid,ppid,cmd,%cpu,%mem,rss,vsz --no-headers | while IFS= read -r line; do
+        ppid=$(printf "%s" "$line" | awk '{print $3}')
+        if [ "$ppid" -ne 1 ]; then
+            printf "%s%s%s\n" "$GRAY" "$line" "$RESET"
+        else
+            printf "%s\n" "$line"
+        fi
     done
 }
 
