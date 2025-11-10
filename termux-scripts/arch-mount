@@ -3,7 +3,7 @@
 # 如果不是 root, 使用 su -c 重新执行脚本自身
 if [ "$(id -u)" -ne 0 ]; then
     # shellcheck disable=SC2016
-    exec su -c 'exec "$0" "$@"' "$0" "$@"
+    exec su -mm -c 'exec "$0" "$@"' "$0" "$@"
 fi
 
 # Chroot 路径
