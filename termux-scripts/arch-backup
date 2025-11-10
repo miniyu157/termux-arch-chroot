@@ -12,14 +12,46 @@ BackupDir="/storage/emulated/0/_Yumeka/linux/chroot备份"
 ZstdPath="/data/data/com.termux/files/usr/bin/zstd"
 PvPath="/data/data/com.termux/files/usr/bin/pv"
 TarPath="/data/data/com.termux/files/usr/bin/tar"
+DuPath="/data/data/com.termux/files/usr/bin/du"
+DatePath="/data/data/com.termux/files/usr/bin/date"
+AwkPath="/data/data/com.termux/files/usr/bin/awk"
 
 mkdir -p "$BackupDir"
 
-if [ -d "$Source" ]; then
-    BackupFile="$BackupDir/arch-$(date +'[%y]%m.%d-%H:%M:%S').tar.zst"
-    TotalSize=$(du -sb "$Source" | awk '{print $1}')
-    "$TarPath" -cp -C "$(dirname "$Source")" "$(basename "$Source")" | "$PvPath" -s "$TotalSize" | "$ZstdPath" > "$BackupFile"
-    echo "备份完成: $BackupFile"
-else
-    echo "错误: 源目录 '$Source' 不存在。"
+if [ ! -d "$Source" ]; then
+    printf "错误: 源目录 '%s' 不存在。\n" "$Source"
+    exit 1
 fi
+
+printf "正在统计大小: %s\n" "$Source"
+
+TotalSize=$("$DuPath" -sbx "$Source" | "$AwkPath" '{print $1}')
+
+HumanSize=$(echo "$TotalSize" | "$AwkPath" '
+function human(bytes) {
+    if (bytes == 0) return "0B";
+    s[1] = "K"; s[2] = "M"; s[3] = "G"; s[4] = "T"; s[5] = "P";
+    i = 0;
+    while (bytes >= 1024 && i < 5) {
+        bytes /= 1024;
+        i++;
+    }
+    if (i == 0) {
+        return sprintf("%.0fB", bytes);
+    } else {
+        return sprintf("%.1f%s", bytes, s[i]);
+    }
+}
+{ print human($1) }
+')
+
+printf "统计完成: %s\t%s\n" "$HumanSize" "$Source"
+
+BackupFile="$BackupDir/arch-$("$DatePath" +'[%y]%m.%d-%H:%M:%S').tar.zst"
+printf "开始备份到: %s\n" "$BackupFile"
+
+"$TarPath" -cp --one-file-system --warning=no-file-ignored -C "$(dirname "$Source")" "$(basename "$Source")" \
+    | "$PvPath" -s "$TotalSize" \
+    | "$ZstdPath" > "$BackupFile"
+
+printf "备份完成: %s\n" "$BackupFile"
